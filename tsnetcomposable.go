@@ -16,7 +16,6 @@ import (
 var (
 	enable_funnel_string = os.Getenv("TSNET_ENABLE_FUNNEL")
 	enable_funnel        = false
-	redirect_to          = os.Getenv("TSNET_HTTP_REDIRECT_URL")
 	addr                 = os.Getenv("TSNET_LISTEN_ADDR")
 	custom_hostname      = os.Getenv("TSNET_CUSTOM_HOSTNAME")
 	proxy_to             = os.Getenv("TSNET_PROXY_TO_URL")

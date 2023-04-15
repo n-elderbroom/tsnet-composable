@@ -14,30 +14,36 @@ for example, on my tailscale network, my raspberry pi is running many services. 
 
 
 ## How:
-An example `docker-compose.yml`. In this case, putting `pihole`'s web interface behind a reverse proxy.
+An example `docker-compose.yml`. In this case, putting `vaultwarden`'s web interface behind a reverse proxy.
+This is a great use case for it, making vaultwarden completely private, and only available over a tailnet. While also completely containerized.
+No ports to bitwarden are exposed, even to localhost. Its only exposed to the other container, which then only exposes it to the tailnet over https.
 ```yml
-version: '3'
+version: '2.1'
 services:
-  pihole:
-    container_name: pihole
-    image: pihole/pihole:latest
-    ports:
-      - "53:53/tcp"
-      - "53:53/udp"
-      # no need to expose port 80. it is exposed through tailscale
-    # .. other pihole config excluded for brevity
-  tsnetproxy:
-    container_name: pihole_proxy
-    image: something
+  vaultwarden:
+    image: vaultwarden/server:latest
+    container_name: vaultwarden
+    volumes:
+      - vaultwarden-data:/data
+    restart: unless-stopped
+  vwexperimentproxy:
+    image: tsnet-composable-stable
+    container_name: tsnet-composable-stable
     environment:
-      TS_AUTHKEY: $TS_AUTHKEY
-      TSNET_HOSTNAME: pihole
-      TSNET_HOST: pihole:80 #this refers to the "pihole" container above. docker containers can access themselves by name when on same network.
-      
+      - TS_AUTHKEY=tskey-auth-SOMEKEYHERE #get a key from the tailscale site under settings.
+      - TSNET_CUSTOM_HOSTNAME=vaultwarden #Give it a custom name if you want. in this case, its then available at https://vaultwarden.ts-net-name.ts.net
+      - TSNET_PROXY_TO_URL=http://vaultwarden  #this URL refers to the other container's container_name above
+    volumes:
+      - tailscale-data:/var/lib/tailscale
+    restart: unless-stopped
+volumes:
+  vaultwarden-data:
+  tailscale-data:
+
 ```
 
 
 ## Building
 ```bash
-docker build -t tsnet-composable .
+docker build -t tsnet-composable-stable .
 ```
