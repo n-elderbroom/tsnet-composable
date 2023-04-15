@@ -32,7 +32,7 @@ services:
       - vaultwarden-data:/data
     restart: unless-stopped
   vwexperimentproxy:
-    image: tsnet-composable-stable
+    image: ghcr.io/n-elderbroom/tsnet-composable:main
     container_name: tsnet-composable-stable
     environment:
       - TS_AUTHKEY=tskey-auth-SOMEKEYHERE #get a key from the tailscale site under settings.
