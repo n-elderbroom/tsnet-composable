@@ -1,9 +1,9 @@
 package main
 
 import (
-	"crypto/tls"
 	"flag"
 	"log"
+	"net"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -14,26 +14,22 @@ import (
 )
 
 var (
-	enable_redirect_string = os.Getenv("TSNET_ENABLE_REDIRECT")
-	enable_redirect        = false
-	redirect_to            = os.Getenv("TSNET_HTTP_REDIRECT_URL")
-	addr                   = os.Getenv("TSNET_LISTEN_ADDR")
-	custom_hostname        = os.Getenv("TSNET_CUSTOM_HOSTNAME")
-	proxy_to               = os.Getenv("TSNET_PROXY_TO_URL")
+	enable_funnel_string = os.Getenv("TSNET_ENABLE_FUNNEL")
+	enable_funnel        = false
+	redirect_to          = os.Getenv("TSNET_HTTP_REDIRECT_URL")
+	addr                 = os.Getenv("TSNET_LISTEN_ADDR")
+	custom_hostname      = os.Getenv("TSNET_CUSTOM_HOSTNAME")
+	proxy_to             = os.Getenv("TSNET_PROXY_TO_URL")
 )
 
 func main() {
 	flag.Parse()
 
-	// mux := http.NewServeMux()
-	if strings.ToLower(enable_redirect_string) == "true" {
-		enable_redirect = true
-		log.Println("enabling http -> https redirect")
-		if redirect_to == "" {
-			log.Fatal("missing redirect url. likely <hostname>.something.ts.net")
-
-		}
+	if strings.ToLower(enable_funnel_string) == "true" {
+		enable_funnel = true
+		log.Println("running as a PUBLIC funneled node.")
 	}
+
 	if addr == "" {
 		log.Println("no listen address provided. assuming :443")
 		addr = ":443"
@@ -59,54 +55,39 @@ func main() {
 	}
 
 	defer s.Close()
-	ln, err := s.Listen("tcp", addr)
-	if err != nil {
-		log.Fatal(err)
+
+	var ln net.Listener
+	if enable_funnel {
+		ln, err = s.ListenFunnel("tcp", addr)
+		if err != nil {
+			log.Fatal(err)
+		}
+	} else if addr == ":443" {
+		ln, err = s.ListenTLS("tcp", ":443")
+		if err != nil {
+			log.Fatal(err)
+		}
+	} else {
+		ln, err = s.Listen("tcp", addr)
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
+
 	defer ln.Close()
 
-	if enable_redirect {
-		go func() {
-			ln_redirect, err := s.Listen("tcp", ":80")
-			if err != nil {
-				log.Fatal(err)
-			}
-			defer ln_redirect.Close()
-			log.Printf("setting up redirect to %s\n", redirect_to)
-			log.Fatal(http.Serve(ln_redirect, http.RedirectHandler(redirect_to, http.StatusMovedPermanently)))
-		}()
-	}
+	// lc, err := s.LocalClient()
+	// if err != nil {
+	// 	log.Fatal(err)
+	// }
 
-	lc, err := s.LocalClient()
-	if err != nil {
-		log.Fatal(err)
-	}
+	// if addr == ":443" {
+	// 	ln = tls.NewListener(ln, &tls.Config{
+	// 		GetCertificate: lc.GetCertificate,
+	// 	})
+	// }
 
-	if addr == ":443" {
-		ln = tls.NewListener(ln, &tls.Config{
-			GetCertificate: lc.GetCertificate,
-		})
-	}
-
-	// log.Fatal(http.Serve(ln, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-	// 	who, err := lc.WhoIs(r.Context(), r.RemoteAddr)
-	// 	if err != nil {
-	// 		http.Error(w, err.Error(), 500)
-	// 		return
-	// 	}
-	// 	fmt.Fprintf(w, "<html><body><h1>Hello, world!</h1>\n")
-	// 	fmt.Fprintf(w, "<p>You are <b>%s</b> from <b>%s</b> (%s) (%s)</p>",
-	// 		html.EscapeString(who.UserProfile.LoginName),
-	// 		html.EscapeString(who.Node.ComputedName),
-	// 		r.RemoteAddr,
-	// 		html.EscapeString(who.Node.Name))
-	// })))
 	proxy := httputil.NewSingleHostReverseProxy(proxy_to_url)
 
 	log.Fatal(http.Serve(ln, proxy))
-}
-
-func firstLabel(s string) string {
-	s, _, _ = strings.Cut(s, ".")
-	return s
 }
