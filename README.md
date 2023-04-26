@@ -31,15 +31,16 @@ services:
     volumes:
       - vaultwarden-data:/data
     restart: unless-stopped
-  vwexperimentproxy:
+  vaultwardenproxy:
     image: ghcr.io/n-elderbroom/tsnet-composable:main
     container_name: tsnet-composable-stable
     environment:
       - TS_AUTHKEY=tskey-auth-SOMEKEYHERE #get a key from the tailscale site under settings.
       - TSNET_CUSTOM_HOSTNAME=vaultwarden #Give it a custom name if you want. in this case, its then available at https://vaultwarden.ts-net-name.ts.net
       - TSNET_PROXY_TO_URL=http://vaultwarden  #this URL refers to the other container's container_name above
+      # - TSNET_ENABLE_FUNNEL=true #uncomment this to make the container publicly available over tailscale funnel. 
     volumes:
-      - tailscale-data:/var/lib/tailscale
+      - tailscale-data:/root/.config/tsnet-app
     restart: unless-stopped
 volumes:
   vaultwarden-data:
