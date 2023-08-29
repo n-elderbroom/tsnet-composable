@@ -1,6 +1,6 @@
 module github.com/n-elderbroom/tsnet_composable
 
-go 1.20
+go 1.21
 
 require tailscale.com v1.48.1
 
