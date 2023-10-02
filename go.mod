@@ -2,7 +2,7 @@ module github.com/n-elderbroom/tsnet_composable
 
 go 1.21
 
-require tailscale.com v1.50.0
+require tailscale.com v1.50.1
 
 require (
 	filippo.io/edwards25519 v1.0.0 // indirect
